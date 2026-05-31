@@ -1,5 +1,6 @@
 import psutil
 import time
+import threading
 
 
 class InterfaceSelector:
@@ -12,7 +13,7 @@ class InterfaceSelector:
             for iface in stats
         }
 
-    def get_activity(self, duration=2):
+    def get_activity(self, duration=5):
         start = self.get_packet_counts()
 
         time.sleep(duration)
@@ -37,11 +38,29 @@ class InterfaceSelector:
                 f"({activity[iface]} packets)"
             )
 
-        while True:
+        user_choice = {"value": None}
+
+        def get_input():
             try:
-                choice = int(
-                    input("\nSelect interface: ")
+                user_choice["value"] = input(
+                    "\nSelect interface (30s timeout): "
                 )
+
+            except Exception:
+                pass
+
+        input_thread = threading.Thread(
+            target = get_input,
+            daemon = True
+        )
+
+        input_thread.start()
+
+        input_thread.join(timeout=30)
+
+        if user_choice["value"] is not None:
+            try:
+                choice = int(user_choice["value"])
 
                 if 1 <= choice <= len(interfaces):
                     return interfaces[choice - 1]
@@ -49,4 +68,15 @@ class InterfaceSelector:
             except ValueError:
                 pass
 
-            print("Invalid selection.")
+        most_active = max(
+            activity,
+            key=activity.get
+        )
+
+        print(
+            f"\nAutomatically selecting the Interface: "
+            f"{most_active}"
+            f"({activity[most_active]} packets)"
+        )
+
+        return most_active
